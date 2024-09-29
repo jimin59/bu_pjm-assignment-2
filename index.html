@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KMeans Visualization</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <h1>KMeans Clustering Visualization</h1>
+    <div id="plot"></div>
+    <label for="k">Number of Clusters (k): </label>
+    <input type="number" id="k" value="3" min="2" max="10">
+    <select id="init-method">
+        <option value="random">Random</option>
+        <option value="farthest_first">Farthest First</option>
+        <option value="kmeans++">KMeans++</option>
+    </select>
+    <button onclick="cluster()">Cluster</button>
+    <button onclick="reset()">Reset</button>
+
+    <script>
+        async function plotData() {
+            let response = await fetch('/data');
+            let data = await response.json();
+            Plotly.newPlot('plot', [{
+                x: data.map(p => p[0]),
+                y: data.map(p => p[1]),
+                mode: 'markers'
+            }]);
+        }
+
+        async function cluster() {
+            let k = document.getElementById('k').value;
+            let method = document.getElementById('init-method').value;
+            let response = await fetch('/cluster', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ k, method })
+            });
+            let result = await response.json();
+            plotClusters(result);
+        }
+
+        function plotClusters(result) {
+            let traces = [];
+            result.clusters.forEach((cluster, i) => {
+                traces.push({
+                    x: cluster.map(p => p[0]),
+                    y: cluster.map(p => p[1]),
+                    mode: 'markers',
+                    name: `Cluster ${i + 1}`
+                });
+            });
+            traces.push({
+                x: result.centroids.map(c => c[0]),
+                y: result.centroids.map(c => c[1]),
+                mode: 'markers',
+                marker: { size: 10, color: 'black' },
+                name: 'Centroids'
+            });
+            Plotly.newPlot('plot', traces);
+        }
+
+        async function reset() {
+            await fetch('/reset', { method: 'POST' });
+            plotData();
+        }
+
+        plotData();
+    </script>
+</body>
+</html>
